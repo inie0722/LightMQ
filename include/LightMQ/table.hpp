@@ -1,9 +1,6 @@
 #pragma once
 
-#include <cstdint>
-
-#include <filesystem>
-#include <fstream>
+#include <atomic>
 #include <string_view>
 
 #include "LightMQ/core.hpp"
@@ -73,7 +70,7 @@ namespace LightMQ
                     throw std::runtime_error("bad row access");
                 }
 
-                return is_value_;
+                return value_;
             }
 
             const value_type &value() const
@@ -96,6 +93,13 @@ namespace LightMQ
             // 本地 capacity
             std::uint64_t capacity_;
 
+            void remmap()
+            {
+                capacity_ = mmap_.get_header().capacity / sizeof(optional_type);
+                mmap_.remmap();
+                optional_ = static_cast<optional_type *>(mmap_.get_address());
+            }
+
             /// 推入数据
             size_t do_push(const value_type &val, size_t index)
             {
@@ -106,12 +110,16 @@ namespace LightMQ
 
                     if (!flag)
                     {
-                        this->recapacity();
+                        if (capacity_ == this->capacity())
+                        {
+                            mmap_.recapacity();
+                        }
+
                         header.lock = false;
                         header.capacity.notify_all();
                     }
 
-                    header.capacity.wait(capacity_ * sizeof(optional_type));
+                    header.capacity.wait(capacity_ / sizeof(optional_type));
                     this->remmap();
                 }
 
@@ -126,15 +134,16 @@ namespace LightMQ
                 while (index >= capacity_)
                 {
                     auto &header = mmap_.get_header();
-                    header.capacity.wait(capacity_ * sizeof(optional_type));
-                    capacity_ = header.capacity;
+                    header.capacity.wait(capacity_ / sizeof(optional_type));
+
+                    this->remmap();
                 }
                 return optional_[index];
             }
 
         public:
             table(std::string_view name, mode_t mode, size_t capacity)
-                : mmap_(name, mode, capacity)
+                : mmap_(name, mode, capacity * sizeof(optional_type))
             {
                 optional_ = static_cast<optional_type *>(mmap_.get_address());
                 capacity_ = this->capacity();

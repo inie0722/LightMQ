@@ -99,7 +99,7 @@ namespace LightMQ
                 header_ = static_cast<header *>(region_->get_address());
 
                 //需要转换字节序
-                if (header_->endian == std::endian::native)
+                if (header_->endian != std::endian::native)
                 {
                     if (mode == boost::interprocess::read_write)
                     {
@@ -118,6 +118,7 @@ namespace LightMQ
 
         public:
             mmap(std::string_view name, mode_t mode, std::uint64_t capacity)
+            :mmap_name_(name)
             {
                 switch (mode)
                 {
@@ -136,6 +137,7 @@ namespace LightMQ
             }
 
             mmap(std::string_view name, mode_t mode)
+            :mmap_name_(name)
             {
                 switch (mode)
                 {
@@ -155,7 +157,7 @@ namespace LightMQ
 
             ~mmap()
             {
-                if (header_->endian == std::endian::native)
+                if (header_->endian != std::endian::native)
                 {
                     delete header_;
                 }
