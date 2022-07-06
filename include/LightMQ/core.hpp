@@ -166,6 +166,11 @@ namespace LightMQ
                 return region_->get_size() - sizeof(header);
             }
 
+            size_t size() const
+            {
+                return header_->size;
+            }
+
             void recapacity()
             {
                 std::filesystem::resize_file(mmap_name_, header_->capacity * 2 + sizeof(header));
@@ -181,7 +186,13 @@ namespace LightMQ
                 header_ = static_cast<header *>(region_->get_address());
             }
 
-            header_t &get_header()
+            void shrink_to_fit()
+            {
+                std::filesystem::resize_file(mmap_name_, sizeof(header) + header_->size);
+                header_->capacity = header_->size.load();
+            }
+
+            header &get_header()
             {
                 return *this->header_;
             }
