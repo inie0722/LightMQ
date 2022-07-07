@@ -21,13 +21,13 @@ namespace LightMQ
                 detail::atomic<bool> is_value;
                 value_type value;
 
-                node& operator =(const value_type & val)
+                node &operator=(const value_type &val)
                 {
                     this->value = val;
                     this->is_value = true;
                     return *this;
                 }
-            
+
                 void wait()
                 {
                     this->is_value.wait(false);
@@ -115,12 +115,17 @@ namespace LightMQ
                 return this->do_read(index).value;
             }
 
-            bool has_value(size_t index)
+            const value_type &operator[](size_t index) const
+            {
+                return const_cast<table *>(this)->operator[](index);
+            }
+
+            bool has_value(size_t index) const
             {
                 return this->do_read(index).is_value;
             }
 
-            void wait(size_t index)
+            void wait(size_t index) const
             {
                 this->do_read(index).wait();
             }

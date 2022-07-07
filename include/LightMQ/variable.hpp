@@ -94,19 +94,25 @@ namespace LightMQ
                 return {&data_[offset.first], offset.second};
             }
 
-            void wait(size_t index)
+            std::pair<const void *, size_t> operator[](size_t index) const
+            {
+                auto offset = offset_db_[index];
+                return {&data_[offset.first], offset.second};
+            }
+
+            void wait(size_t index) const
             {
                 offset_db_.wait(index);
             }
 
-            size_t size() const
+            std::pair<size_t, size_t> size() const
             {
-                return mmap_.size();
+                return {offset_db_.size(), mmap_.size()};
             }
 
-            size_t capacity() const
+            std::pair<size_t, size_t> capacity() const
             {
-                return mmap_.capacity();
+                return {offset_db_.capacity(), mmap_.capacity()};
             }
 
             void shrink_to_fit()
