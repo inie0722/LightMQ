@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <string_view>
+#include <cstddef>
 
 #include "LightMQ/core.hpp"
 
@@ -38,7 +39,7 @@ namespace LightMQ
             node *node_;
 
             // 本地 capacity
-            std::uint64_t capacity_;
+            std::size_t capacity_;
 
             void remmap()
             {
@@ -48,7 +49,7 @@ namespace LightMQ
             }
 
             /// 推入数据
-            size_t do_push(const value_type &val, size_t index)
+            std::size_t do_push(const value_type &val, std::size_t index)
             {
                 if (index >= capacity_)
                 {
@@ -75,7 +76,7 @@ namespace LightMQ
             }
 
             /// 读取数据
-            node &do_read(size_t index)
+            node &do_read(std::size_t index)
             {
                 while (index >= capacity_)
                 {
@@ -88,7 +89,7 @@ namespace LightMQ
             }
 
         public:
-            table(std::string_view name, mode_t mode, size_t capacity)
+            table(std::string_view name, mode_t mode, std::size_t capacity)
                 : mmap_(name, mode, capacity * sizeof(node))
             {
                 node_ = static_cast<node *>(mmap_.get_address());
@@ -104,38 +105,38 @@ namespace LightMQ
 
             ~table() = default;
 
-            size_t push(const value_type &val)
+            std::size_t push(const value_type &val)
             {
                 auto index = mmap_.get_header().size.fetch_add(1);
                 return this->do_push(val, index);
             }
 
-            value_type &operator[](size_t index)
+            value_type &operator[](std::size_t index)
             {
                 return this->do_read(index).value;
             }
 
-            const value_type &operator[](size_t index) const
+            const value_type &operator[](std::size_t index) const
             {
                 return const_cast<table *>(this)->operator[](index);
             }
 
-            bool has_value(size_t index) const
+            bool has_value(std::size_t index) const
             {
-                return this->do_read(index).is_value;
+                return const_cast<table *>(this)->do_read(index).is_value;
             }
 
-            void wait(size_t index) const
+            void wait(std::size_t index) const
             {
-                this->do_read(index).wait();
+                const_cast<table *>(this)->do_read(index).wait();
             }
 
-            size_t size() const
+            std::size_t size() const
             {
                 return mmap_.size() / sizeof(node);
             }
 
-            size_t capacity() const
+            std::size_t capacity() const
             {
                 return mmap_.capacity() / sizeof(node);
             }

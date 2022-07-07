@@ -2,6 +2,8 @@
 
 #include <atomic>
 #include <string_view>
+#include <cstddef>
+#include <utility>
 
 #include "LightMQ/core.hpp"
 #include "LightMQ/fixed.hpp"
@@ -13,12 +15,12 @@ namespace LightMQ
         class table
         {
         private:
-            fixed::table<std::pair<std::uint64_t, std::uint64_t>> offset_db_;
+            fixed::table<std::pair<std::size_t, std::size_t>> offset_db_;
             detail::mmap mmap_;
             char *data_;
 
             // 本地 capacity
-            std::uint64_t capacity_;
+            std::size_t capacity_;
 
             void remmap()
             {
@@ -28,7 +30,7 @@ namespace LightMQ
             }
 
             /// 推入数据
-            size_t do_push(const void *val, size_t size, size_t index)
+            std::size_t do_push(const void *val, std::size_t size, std::size_t index)
             {
 
                 while (index + size >= capacity_)
@@ -38,7 +40,7 @@ namespace LightMQ
 
                     if (!flag)
                     {
-                        if (capacity_ == this->capacity())
+                        if (capacity_ == this->capacity().second)
                         {
                             mmap_.recapacity();
                         }
@@ -56,16 +58,16 @@ namespace LightMQ
             }
 
         public:
-            table(const std::string &name, mode_t mode, size_t capacity, size_t index_capacity)
+            table(const std::string &name, mode_t mode, std::size_t capacity, std::size_t index_capacity)
                 : offset_db_(name + ".idb", mode, index_capacity), mmap_(name, mode, capacity)
             {
                 data_ = static_cast<char *>(mmap_.get_address());
-                capacity_ = this->capacity();
+                capacity_ = this->capacity().second;
             }
 
             ~table() = default;
             /// 读取数据
-            char *do_read(size_t index, size_t size)
+            char *do_read(std::size_t index, std::size_t size)
             {
                 while (index + size >= capacity_)
                 {
@@ -77,40 +79,40 @@ namespace LightMQ
                 return &data_[index];
             }
 
-            size_t push(const void *val, size_t size)
+            std::size_t push(const void *val, std::size_t size)
             {
                 auto index = mmap_.get_header().size.fetch_add(size);
                 return offset_db_.push({this->do_push(val, size, index), size});
             }
 
-            bool has_value(size_t index)
+            bool has_value(std::size_t index)
             {
                 return offset_db_.has_value(index);
             }
 
-            std::pair<void *, size_t> operator[](size_t index)
+            std::pair<void *, std::size_t> operator[](std::size_t index)
             {
                 auto offset = offset_db_[index];
                 return {&data_[offset.first], offset.second};
             }
 
-            std::pair<const void *, size_t> operator[](size_t index) const
+            std::pair<const void *, std::size_t> operator[](std::size_t index) const
             {
                 auto offset = offset_db_[index];
                 return {&data_[offset.first], offset.second};
             }
 
-            void wait(size_t index) const
+            void wait(std::size_t index) const
             {
                 offset_db_.wait(index);
             }
 
-            std::pair<size_t, size_t> size() const
+            std::pair<std::size_t, std::size_t> size() const
             {
                 return {offset_db_.size(), mmap_.size()};
             }
 
-            std::pair<size_t, size_t> capacity() const
+            std::pair<std::size_t, std::size_t> capacity() const
             {
                 return {offset_db_.capacity(), mmap_.capacity()};
             }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <cstdint>
+#include <cstddef>
 #include <bit>
 #include <string_view>
 #include <fstream>
@@ -43,7 +43,7 @@ namespace LightMQ
 
             source.u = u;
 
-            for (size_t k = 0; k < sizeof(T); k++)
+            for (std::size_t k = 0; k < sizeof(T); k++)
                 dest.u8[k] = source.u8[sizeof(T) - k - 1];
 
             return dest.u;
@@ -55,8 +55,8 @@ namespace LightMQ
             struct header
             {
                 std::endian endian;
-                detail::atomic<std::uint64_t> size;
-                detail::atomic<std::uint64_t> capacity;
+                detail::atomic<std::size_t> size;
+                detail::atomic<std::size_t> capacity;
                 detail::atomic<bool> lock;
             };
 
@@ -66,7 +66,7 @@ namespace LightMQ
             std::unique_ptr<boost::interprocess::file_mapping> file_mapp_;
             std::unique_ptr<boost::interprocess::mapped_region> region_;
 
-            void create_file(size_t size)
+            void create_file(std::size_t size)
             {
                 std::filebuf fbuf;
                 fbuf.open(mmap_name_, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
@@ -74,7 +74,7 @@ namespace LightMQ
                 fbuf.sputc(0);
             }
 
-            void create_only(size_t capacity)
+            void create_only(std::size_t capacity)
             {
                 using namespace boost::interprocess;
 
@@ -117,8 +117,8 @@ namespace LightMQ
             }
 
         public:
-            mmap(std::string_view name, mode_t mode, std::uint64_t capacity)
-            :mmap_name_(name)
+            mmap(std::string_view name, mode_t mode, std::size_t capacity)
+                : mmap_name_(name)
             {
                 switch (mode)
                 {
@@ -137,7 +137,7 @@ namespace LightMQ
             }
 
             mmap(std::string_view name, mode_t mode)
-            :mmap_name_(name)
+                : mmap_name_(name)
             {
                 switch (mode)
                 {
@@ -163,12 +163,12 @@ namespace LightMQ
                 }
             }
 
-            size_t capacity() const
+            std::size_t capacity() const
             {
                 return region_->get_size() - sizeof(header);
             }
 
-            size_t size() const
+            std::size_t size() const
             {
                 return header_->size;
             }
