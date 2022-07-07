@@ -26,6 +26,7 @@ namespace LightMQ
                 {
                     this->value = val;
                     this->is_value = true;
+                    this->is_value.notify_all();
                     return *this;
                 }
 
@@ -133,7 +134,7 @@ namespace LightMQ
 
             std::size_t size() const
             {
-                return mmap_.size() / sizeof(node);
+                return mmap_.size();
             }
 
             std::size_t capacity() const
