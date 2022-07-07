@@ -4,7 +4,7 @@
 #include <string_view>
 
 #include "LightMQ/core.hpp"
-#include "LightMQ/table.hpp"
+#include "LightMQ/fixed.hpp"
 
 namespace LightMQ
 {
