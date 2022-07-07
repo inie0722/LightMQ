@@ -57,17 +57,7 @@ namespace LightMQ
                 return index;
             }
 
-        public:
-            table(const std::string &name, mode_t mode, std::size_t capacity, std::size_t index_capacity)
-                : offset_db_(name + ".idb", mode, index_capacity), mmap_(name, mode, capacity)
-            {
-                data_ = static_cast<char *>(mmap_.get_address());
-                capacity_ = this->capacity().second;
-            }
-
-            ~table() = default;
-            /// 读取数据
-            char *do_read(std::size_t index, std::size_t size)
+            void *do_read(std::size_t index, std::size_t size)
             {
                 while (index + size >= capacity_)
                 {
@@ -78,6 +68,23 @@ namespace LightMQ
                 }
                 return &data_[index];
             }
+
+        public:
+            table(const std::string &name, mode_t mode, std::size_t capacity, std::size_t index_capacity)
+                : offset_db_(name + ".idb", mode, index_capacity), mmap_(name, mode, capacity)
+            {
+                data_ = static_cast<char *>(mmap_.get_address());
+                capacity_ = this->capacity().second;
+            }
+
+            table(const std::string &name, mode_t mode)
+                : offset_db_(name + ".idb", mode), mmap_(name, mode)
+            {
+                data_ = static_cast<char *>(mmap_.get_address());
+                capacity_ = this->capacity().second;
+            }
+
+            ~table() = default;
 
             std::size_t push(const void *val, std::size_t size)
             {
@@ -93,13 +100,12 @@ namespace LightMQ
             std::pair<void *, std::size_t> operator[](std::size_t index)
             {
                 auto offset = offset_db_[index];
-                return {&data_[offset.first], offset.second};
+                return {do_read(offset.first, offset.second), offset.second};
             }
 
             std::pair<const void *, std::size_t> operator[](std::size_t index) const
             {
-                auto offset = offset_db_[index];
-                return {&data_[offset.first], offset.second};
+                return const_cast<table *>(this)->operator[](index);
             }
 
             void wait(std::size_t index) const

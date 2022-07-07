@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "LightMQ/fixed.hpp"
+#include "LightMQ/variable.hpp"
 
 constexpr size_t COUNT = 10000;
 
@@ -28,7 +28,7 @@ public:
     void run_one()
     {
         using value_t = value<DATA_SIZE>;
-        LightMQ::fixed::table<value_t>("table.db", LightMQ::mode_t::create_only, BUFFER_SIZE);
+        LightMQ::variable::table("table.db", LightMQ::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
 
         std::vector<std::atomic<size_t>> array(COUNT);
 
@@ -42,14 +42,14 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                LightMQ::fixed::table<value_t> table("table.db", LightMQ::mode_t::open_read_write);
+                LightMQ::variable::table table("table.db", LightMQ::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
                 for (size_t i = 0; i < COUNT; i++)
                 {
                     data.val = i;
-                    table.push(data);    
+                    table.push(&data, sizeof(data));    
                 }
                 auto end = std::chrono::steady_clock::now();
                 write_diff += (end - start).count(); });
@@ -59,14 +59,14 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                LightMQ::fixed::table<value_t> table("table.db", LightMQ::mode_t::open_read_write);
+                LightMQ::variable::table table("table.db", LightMQ::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
                 for (size_t i = 0; i < COUNT * THREAD_WRITE_NUM; i++)
                 {
                     table.wait(i);
-                    data = table[i];
+                    data = *(value_t*)table[i].first;
                     size_t index = data.val;
                     array[index]++;
                 }
@@ -114,38 +114,38 @@ public:
     }
 };
 
-TEST(fixed_table, fixed_table)
+TEST(variable_table, variable_table)
 {
-    LightMQ::fixed::table<int> table("table.db", LightMQ::mode_t::create_only, 8);
+    LightMQ::variable::table table("table.db", LightMQ::mode_t::create_only, 8, 8);
 
     int a = rand();
-    table.push(a);
+    table.push(&a, sizeof(a));
 
-    ASSERT_TRUE(table.size() == 1);
+    ASSERT_TRUE(table.size().first == 1);
 
-    int b = table[0];
+    int b = *(int*)table[0].first;
     ASSERT_TRUE(b == a);
 
     int array_a[5] = {rand(), rand(), rand(), rand(), rand()};
 
     for (size_t i = 0; i < 5; i++)
     {
-        table.push(array_a[i]);
+        table.push(&array_a[i], sizeof(int));
     }
 
-    ASSERT_TRUE(table.size() == 6);
+    ASSERT_TRUE(table.size().first == 6);
 
     int array_b[5] = {0};
 
     for (size_t i = 0; i < 6; i++)
     {
-        array_b[i] = table[i + 1];
+        array_b[i] =  *(int*)table[i + 1].first;
     }
 
     ASSERT_TRUE(0 == memcmp(array_a, array_b, sizeof(array_a)));
 }
 
-TEST(fixed_table, performance)
+TEST(variable_table, performance)
 {
     verify v;
     v.run<64, 128, 256, 512, 1024>();
