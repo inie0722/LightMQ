@@ -1,5 +1,7 @@
 add_executable(fixed_table EXCLUDE_FROM_ALL fixed_table.cpp)
 
+add_custom_target(check DEPENDS fixed_table)
+
 set(target_lib GTest::gtest)
 
 target_link_libraries(fixed_table ${target_lib})
