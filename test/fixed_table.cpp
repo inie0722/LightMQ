@@ -10,9 +10,9 @@ constexpr size_t COUNT = 10000;
 
 constexpr size_t BUFFER_SIZE = 256;
 
-constexpr size_t THREAD_WRITE_NUM = 2;
+constexpr size_t THREAD_WRITE_NUM = 1;
 
-constexpr size_t THREAD_READ_NUM = 2;
+constexpr size_t THREAD_READ_NUM = 1;
 
 class verify
 {
