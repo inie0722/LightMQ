@@ -68,7 +68,7 @@ namespace LightMQ
                         header.capacity.notify_all();
                     }
 
-                    header.capacity.wait(capacity_ / sizeof(node));
+                    header.capacity.wait(capacity_ * sizeof(node));
                     this->remmap();
                 }
 
@@ -82,7 +82,7 @@ namespace LightMQ
                 while (index >= capacity_)
                 {
                     auto &header = mmap_.get_header();
-                    header.capacity.wait(capacity_ / sizeof(node));
+                    header.capacity.wait(capacity_ * sizeof(node));
 
                     this->remmap();
                 }
