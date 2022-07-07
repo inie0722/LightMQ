@@ -10,94 +10,41 @@ namespace LightMQ
     namespace fixed
     {
         template <typename T>
-        class optional
-        {
-        public:
-            using value_type = T;
-
-        private:
-            detail::atomic<bool> is_value_;
-            value_type value_;
-
-        public:
-            optional &operator=(const value_type &val)
-            {
-                value_ = val;
-                is_value_ = true;
-                is_value_.notify_all();
-                return *this;
-            }
-
-            value_type &operator*()
-            {
-                return value_;
-            }
-
-            const value_type &operator*() const
-            {
-                return value_;
-            }
-
-            value_type *operator->()
-            {
-                return &value_;
-            }
-
-            const value_type *operator->() const
-            {
-                return &value_;
-            }
-
-            bool has_value() const
-            {
-                return is_value_;
-            }
-
-            operator bool() const
-            {
-                return has_value();
-            }
-
-            void wait() const
-            {
-                is_value_.wait(false);
-            }
-
-            value_type &value()
-            {
-                if (!is_value_)
-                {
-                    throw std::runtime_error("bad row access");
-                }
-
-                return value_;
-            }
-
-            const value_type &value() const
-            {
-                return const_cast<optional *>(this)->value();
-            }
-        };
-
-        template <typename T>
         class table
         {
         public:
             using value_type = T;
-            using optional_type = optional<value_type>;
 
         private:
+            struct node
+            {
+                detail::atomic<bool> is_value;
+                value_type value;
+
+                node& operator =(const value_type & val)
+                {
+                    this->value = val;
+                    this->is_value = true;
+                    return *this;
+                }
+            
+                void wait()
+                {
+                    this->is_value.wait(false);
+                }
+            };
+
             detail::mmap mmap_;
-            optional_type *optional_;
+            node *node_;
 
             // 本地 capacity
             std::uint64_t capacity_;
 
             void remmap()
             {
-                capacity_ = mmap_.get_header().capacity / sizeof(optional_type);
+                capacity_ = mmap_.get_header().capacity / sizeof(node);
                 mmap_.remmap();
-                optional_ = static_cast<optional_type *>(mmap_.get_address());
+                node_ = static_cast<node *>(mmap_.get_address());
             }
 
             /// 推入数据
@@ -119,40 +66,39 @@ namespace LightMQ
                         header.capacity.notify_all();
                     }
 
-                    header.capacity.wait(capacity_ / sizeof(optional_type));
+                    header.capacity.wait(capacity_ / sizeof(node));
                     this->remmap();
                 }
 
-                optional_[index] = val;
-
+                node_[index] = val;
                 return index;
             }
 
             /// 读取数据
-            optional_type &do_read(size_t index)
+            node &do_read(size_t index)
             {
                 while (index >= capacity_)
                 {
                     auto &header = mmap_.get_header();
-                    header.capacity.wait(capacity_ / sizeof(optional_type));
+                    header.capacity.wait(capacity_ / sizeof(node));
 
                     this->remmap();
                 }
-                return optional_[index];
+                return node_[index];
             }
 
         public:
             table(std::string_view name, mode_t mode, size_t capacity)
-                : mmap_(name, mode, capacity * sizeof(optional_type))
+                : mmap_(name, mode, capacity * sizeof(node))
             {
-                optional_ = static_cast<optional_type *>(mmap_.get_address());
+                node_ = static_cast<node *>(mmap_.get_address());
                 capacity_ = this->capacity();
             }
 
             table(std::string_view name, mode_t mode)
                 : mmap_(name, mode)
             {
-                optional_ = static_cast<optional_type *>(mmap_.get_address());
+                node_ = static_cast<node *>(mmap_.get_address());
                 capacity_ = this->capacity();
             }
 
@@ -164,24 +110,29 @@ namespace LightMQ
                 return this->do_push(val, index);
             }
 
-            optional_type &operator[](size_t index)
+            value_type &operator[](size_t index)
             {
-                return this->do_read(index);
+                return this->do_read(index).value;
             }
 
-            const optional_type &operator[](size_t index) const
+            bool has_value(size_t index)
             {
-                return const_cast<optional_type *>(this)->do_read(index);
+                return this->do_read(index).is_value;
+            }
+
+            void wait(size_t index)
+            {
+                this->do_read(index).wait();
             }
 
             size_t size() const
             {
-                return mmap_.size() / sizeof(optional_type);
+                return mmap_.size() / sizeof(node);
             }
 
             size_t capacity() const
             {
-                return mmap_.capacity() / sizeof(optional_type);
+                return mmap_.capacity() / sizeof(node);
             }
 
             void shrink_to_fit()
