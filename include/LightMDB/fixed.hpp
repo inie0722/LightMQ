@@ -4,9 +4,9 @@
 #include <string_view>
 #include <cstddef>
 
-#include "LightMQ/core.hpp"
+#include "LightMDB/core.hpp"
 
-namespace LightMQ
+namespace LightMDB
 {
     namespace fixed
     {
@@ -148,4 +148,4 @@ namespace LightMQ
             }
         };
     } // namespace fixed
-} // namespace LightMQ
+} // namespace LightMDB

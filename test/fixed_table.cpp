@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "LightMQ/fixed.hpp"
+#include "LightMDB/fixed.hpp"
 
 constexpr size_t COUNT = 10000;
 
@@ -28,7 +28,7 @@ public:
     void run_one()
     {
         using value_t = value<DATA_SIZE>;
-        LightMQ::fixed::table<value_t>("table.db", LightMQ::mode_t::create_only, BUFFER_SIZE);
+        LightMDB::fixed::table<value_t>("table.db", LightMDB::mode_t::create_only, BUFFER_SIZE);
 
         std::vector<std::atomic<size_t>> array(COUNT);
 
@@ -42,7 +42,7 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                LightMQ::fixed::table<value_t> table("table.db", LightMQ::mode_t::open_read_write);
+                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                LightMQ::fixed::table<value_t> table("table.db", LightMQ::mode_t::open_read_write);
+                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -116,7 +116,7 @@ public:
 
 TEST(fixed_table, fixed_table)
 {
-    LightMQ::fixed::table<int> table("table.db", LightMQ::mode_t::create_only, 8);
+    LightMDB::fixed::table<int> table("table.db", LightMDB::mode_t::create_only, 8);
 
     int a = rand();
     table.push(a);

@@ -5,10 +5,10 @@
 #include <cstddef>
 #include <utility>
 
-#include "LightMQ/core.hpp"
-#include "LightMQ/fixed.hpp"
+#include "LightMDB/core.hpp"
+#include "LightMDB/fixed.hpp"
 
-namespace LightMQ
+namespace LightMDB
 {
     namespace variable
     {
@@ -129,4 +129,4 @@ namespace LightMQ
             }
         };
     } // namespace variable
-} // namespace LightMQ
+} // namespace LightMDB

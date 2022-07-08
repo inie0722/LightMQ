@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "LightMQ/variable.hpp"
+#include "LightMDB/variable.hpp"
 
 constexpr size_t COUNT = 10000;
 
@@ -28,7 +28,7 @@ public:
     void run_one()
     {
         using value_t = value<DATA_SIZE>;
-        LightMQ::variable::table("table.db", LightMQ::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
+        LightMDB::variable::table("table.db", LightMDB::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
 
         std::vector<std::atomic<size_t>> array(COUNT);
 
@@ -42,7 +42,7 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                LightMQ::variable::table table("table.db", LightMQ::mode_t::open_read_write);
+                LightMDB::variable::table table("table.db", LightMDB::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                LightMQ::variable::table table("table.db", LightMQ::mode_t::open_read_write);
+                LightMDB::variable::table table("table.db", LightMDB::mode_t::open_read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -116,7 +116,7 @@ public:
 
 TEST(variable_table, variable_table)
 {
-    LightMQ::variable::table table("table.db", LightMQ::mode_t::create_only, 8, 8);
+    LightMDB::variable::table table("table.db", LightMDB::mode_t::create_only, 8, 8);
 
     int a = rand();
     table.push(&a, sizeof(a));

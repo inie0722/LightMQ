@@ -14,7 +14,7 @@
 #include <boost/interprocess/managed_mapped_file.hpp>
 #include <boost/interprocess/managed_shared_memory.hpp>
 
-namespace LightMQ
+namespace LightMDB
 {
     enum class mode_t : int8_t
     {
@@ -205,4 +205,4 @@ namespace LightMQ
             }
         };
     } // namespace detail
-} // namespace LightMQ
+} // namespace LightMDB
