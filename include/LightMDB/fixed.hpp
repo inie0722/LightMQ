@@ -3,6 +3,7 @@
 #include <atomic>
 #include <string_view>
 #include <cstddef>
+#include <limits>
 
 #include "LightMDB/core.hpp"
 
@@ -15,6 +16,152 @@ namespace LightMDB
         {
         public:
             using value_type = T;
+            using size_type = std::size_t;
+            using difference_type = std::ptrdiff_t;
+            using reference = value_type &;
+            using const_reference = const value_type &;
+            using pointer = value_type *;
+            using const_pointer = const value_type *;
+
+            class iterator
+            {
+            public:
+                using value_type = T;
+
+            private:
+                friend class table;
+
+                table *table_;
+                size_t cur_;
+
+            public:
+                iterator() = default;
+
+                iterator(const iterator &other)
+                {
+                    *this = other;
+                }
+
+                iterator &operator=(const iterator &other)
+                {
+                    this->table_ = other.table_;
+                    this->cur_ = other.cur_;
+
+                    return *this;
+                }
+
+                value_type &operator*() const
+                {
+                    return (*table_)[cur_];
+                }
+
+                value_type *operator->() const
+                {
+                    return &(*table_)[cur_];
+                }
+
+                iterator &operator+=(difference_type n)
+                {
+                    this->cur_ += n;
+                    return *this;
+                }
+
+                iterator &operator-=(difference_type n)
+                {
+                    this->cur_ -= n;
+                    return *this;
+                }
+
+                friend iterator operator+(const iterator &self, difference_type n)
+                {
+                    iterator ret = self;
+                    ret.cur_ += n;
+                    return ret;
+                }
+
+                friend iterator operator-(const iterator &self, difference_type n)
+                {
+                    iterator ret = self;
+                    ret.cur_ -= n;
+                    return ret;
+                }
+
+                friend iterator operator+(difference_type n, const iterator &self)
+                {
+                    return self + n;
+                }
+
+                friend iterator operator-(difference_type n, const iterator &self)
+                {
+                    return self - n;
+                }
+
+                friend difference_type operator-(const iterator &left, const iterator &right)
+                {
+                    return left.cur_ - right.cur_;
+                }
+
+                iterator &operator++()
+                {
+                    ++this->cur_;
+                    return *this;
+                }
+
+                iterator &operator--()
+                {
+                    --this->cur_;
+                    return *this;
+                }
+
+                iterator operator++(int)
+                {
+                    iterator ret = *this;
+                    ++this->cur_;
+                    return ret;
+                }
+
+                iterator operator--(int)
+                {
+                    iterator ret = *this;
+                    --this->cur_;
+                    return ret;
+                }
+
+                value_type &operator[](difference_type n) const
+                {
+                    return (*this->table_)[this->cur + n];
+                }
+
+                friend bool operator==(const iterator &left, const iterator &right)
+                {
+                    return (left.table_ == right.table_) and (left.cur_ == right.cur_);
+                }
+
+                friend bool operator!=(const iterator &left, const iterator &right)
+                {
+                    return (left.table_ != right.table_) or (left.cur_ != right.cur_);
+                }
+
+                friend bool operator<(const iterator &left, const iterator &right)
+                {
+                    return left.cur_ < right.cur_;
+                }
+
+                friend bool operator<=(const iterator &left, const iterator &right)
+                {
+                    return left.cur_ <= right.cur_;
+                }
+
+                friend bool operator>(const iterator &left, const iterator &right)
+                {
+                    return left.cur_ > right.cur_;
+                }
+
+                friend bool operator>=(const iterator &left, const iterator &right)
+                {
+                    return left.cur_ >= right.cur_;
+                }
+            };
 
         private:
             struct node
@@ -132,9 +279,42 @@ namespace LightMDB
                 const_cast<table *>(this)->do_read(index).wait();
             }
 
+            iterator begin() const
+            {
+                iterator ret;
+                ret.cur_ = 0;
+                ret.table_ = const_cast<table*>(this);
+
+                return ret;
+            }
+
+            iterator end() const
+            {
+                iterator ret;
+                ret.cur_ = this->size();
+                ret.table_ = const_cast<table*>(this);
+
+                return ret;
+            }
+
+            bool empty() const
+            {
+                return !this->size();
+            }
+
             std::size_t size() const
             {
                 return mmap_.size();
+            }
+
+            std::size_t max_size() const
+            {
+                return std::numeric_limits<std::size_t>::max();
+            }
+
+            std::size_t reserve() const
+            {
+                return this->capacity() - this->size();
             }
 
             std::size_t capacity() const

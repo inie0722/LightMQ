@@ -163,14 +163,19 @@ namespace LightMDB
                 }
             }
 
-            std::size_t capacity() const
-            {
-                return region_->get_size() - sizeof(header);
-            }
-
             std::size_t size() const
             {
                 return header_->size;
+            }
+
+            std::size_t reserve() const
+            {
+                return this->capacity() - this->size();
+            }
+
+            std::size_t capacity() const
+            {
+                return region_->get_size() - sizeof(header);
             }
 
             void recapacity()
