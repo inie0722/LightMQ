@@ -42,7 +42,7 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::open_read_write);
+                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::open_read_write);
+                LightMDB::fixed::table<value_t> table("table.db", LightMDB::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();

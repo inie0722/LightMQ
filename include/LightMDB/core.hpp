@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <cstddef>
-#include <bit>
 #include <string_view>
 #include <fstream>
 #include <filesystem>
@@ -20,35 +19,17 @@ namespace LightMDB
     enum class mode_t : int8_t
     {
         create_only = 0,
-        open_read_write,
-        open_read_only,
         open_or_create,
-        open_copy_on_write
+        read_write,
+        read_only,
+        read_private,
+        copy_on_write
     };
 
     namespace detail
     {
         template <typename T>
         using atomic = boost::ipc_atomic<T>;
-
-        template <typename T>
-        T swap_endian(T u)
-        {
-            static_assert(CHAR_BIT == 8, "CHAR_BIT != 8");
-
-            union
-            {
-                T u;
-                unsigned char u8[sizeof(T)];
-            } source, dest;
-
-            source.u = u;
-
-            for (std::size_t k = 0; k < sizeof(T); k++)
-                dest.u8[k] = source.u8[sizeof(T) - k - 1];
-
-            return dest.u;
-        }
 
         class mmap
         {
@@ -58,7 +39,6 @@ namespace LightMDB
 
             struct header
             {
-                std::endian endian;
                 detail::atomic<size_type> size;
                 detail::atomic<size_type> capacity;
                 detail::atomic<bool> lock;
@@ -88,36 +68,18 @@ namespace LightMDB
                 region_ = std::make_unique<mapped_region>(*file_mapp_, boost::interprocess::mode_t::read_write);
 
                 header_ = new (region_->get_address()) header;
-                header_->endian = std::endian::native;
                 header_->size = 0;
                 header_->lock = false;
                 header_->capacity = capacity;
             }
 
-            void open_only(boost::interprocess::mode_t mode)
+            void open_only(boost::interprocess::mode_t file_mapping_mode, boost::interprocess::mode_t mapped_region_mode)
             {
                 using namespace boost::interprocess;
 
-                file_mapp_ = std::make_unique<file_mapping>(mmap_name_.c_str(), mode);
-                region_ = std::make_unique<mapped_region>(*file_mapp_, mode);
+                file_mapp_ = std::make_unique<file_mapping>(mmap_name_.c_str(), file_mapping_mode);
+                region_ = std::make_unique<mapped_region>(*file_mapp_, mapped_region_mode);
                 header_ = static_cast<header *>(region_->get_address());
-
-                //需要转换字节序
-                if (header_->endian != std::endian::native)
-                {
-                    if (mode == boost::interprocess::read_write)
-                    {
-                        throw std::runtime_error("Different endian does not support open_read_write");
-                    }
-
-                    auto n_header_ = new header;
-                    n_header_->endian = header_->endian;
-                    n_header_->size = swap_endian(header_->size.load());
-                    n_header_->capacity = swap_endian(header_->capacity.load());
-                    n_header_->lock = header_->lock.load();
-
-                    header_ = n_header_;
-                }
             }
 
         public:
@@ -131,7 +93,7 @@ namespace LightMDB
                     break;
                 case mode_t::open_or_create:
                     if (std::filesystem::exists(name))
-                        open_only(boost::interprocess::mode_t::read_write);
+                        open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write);
                     else
                         create_only(capacity);
                     break;
@@ -145,27 +107,24 @@ namespace LightMDB
             {
                 switch (mode)
                 {
-                case mode_t::open_read_write:
-                    open_only(boost::interprocess::mode_t::read_write);
+                case mode_t::read_write:
+                    open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write);
                     break;
-                case mode_t::open_read_only:
-                    open_only(boost::interprocess::mode_t::read_only);
+                case mode_t::read_only:
+                    open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_only);
                     break;
-                case mode_t::open_copy_on_write:
-                    open_only(boost::interprocess::mode_t::copy_on_write);
+                case mode_t::read_private:
+                    open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_private);
+                    break;
+                case mode_t::copy_on_write:
+                    open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::copy_on_write);
                     break;
                 default:
                     throw std::runtime_error("error mode");
                 }
             }
 
-            ~mmap()
-            {
-                if (header_->endian != std::endian::native)
-                {
-                    delete header_;
-                }
-            }
+            ~mmap() = default;
 
             size_type size() const
             {
