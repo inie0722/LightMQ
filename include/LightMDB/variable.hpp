@@ -14,13 +14,17 @@ namespace LightMDB
     {
         class table
         {
+        public:
+            using size_type = std::size_t;
+            using difference_type = std::ptrdiff_t;
+
         private:
-            fixed::table<std::pair<std::size_t, std::size_t>> offset_db_;
+            fixed::table<std::pair<size_type, size_type>> offset_db_;
             detail::mmap mmap_;
             char *data_;
 
             // 本地 capacity
-            std::size_t capacity_;
+            size_type capacity_;
 
             void remmap()
             {
@@ -30,9 +34,8 @@ namespace LightMDB
             }
 
             /// 推入数据
-            std::size_t do_push(const void *val, std::size_t size, std::size_t index)
+            size_type do_push(const void *val, size_type size, size_type index)
             {
-
                 while (index + size >= capacity_)
                 {
                     auto &header = mmap_.get_header();
@@ -57,7 +60,7 @@ namespace LightMDB
                 return index;
             }
 
-            void *do_read(std::size_t index, std::size_t size)
+            void *do_read(size_type index, size_type size)
             {
                 while (index + size >= capacity_)
                 {
@@ -70,15 +73,15 @@ namespace LightMDB
             }
 
         public:
-            table(const std::string &name, mode_t mode, std::size_t capacity, std::size_t index_capacity)
-                : offset_db_(name + ".idb", mode, index_capacity), mmap_(name, mode, capacity)
+            table(const std::string &name, mode_t mode, size_type capacity, size_type index_capacity)
+                : offset_db_(name + "i", mode, index_capacity), mmap_(name, mode, capacity)
             {
                 data_ = static_cast<char *>(mmap_.get_address());
                 capacity_ = this->capacity().second;
             }
 
             table(const std::string &name, mode_t mode)
-                : offset_db_(name + ".idb", mode), mmap_(name, mode)
+                : offset_db_(name + "i", mode), mmap_(name, mode)
             {
                 data_ = static_cast<char *>(mmap_.get_address());
                 capacity_ = this->capacity().second;
@@ -86,46 +89,82 @@ namespace LightMDB
 
             ~table() = default;
 
-            std::size_t push(const void *val, std::size_t size)
+            size_type push(const void *val, size_type size)
             {
                 auto index = mmap_.get_header().size.fetch_add(size);
                 return offset_db_.push({this->do_push(val, size, index), size});
             }
 
-            bool has_value(std::size_t index)
+            bool has_value(size_type index)
             {
                 return offset_db_.has_value(index);
             }
 
-            std::pair<void *, std::size_t> operator[](std::size_t index)
+            std::pair<void *, size_type> operator[](size_type index)
             {
                 auto offset = offset_db_[index];
                 return {do_read(offset.first, offset.second), offset.second};
             }
 
-            std::pair<const void *, std::size_t> operator[](std::size_t index) const
+            std::pair<void *, size_type> operator[](const std::pair<size_type, size_type> &index)
+            {
+                return {do_read(index.first, index.second), index.second};
+            }
+
+            std::pair<const void *, size_type> operator[](size_type index) const
             {
                 return const_cast<table *>(this)->operator[](index);
             }
 
-            void wait(std::size_t index) const
+            std::pair<const void *, size_type> operator[](const std::pair<size_type, size_type> &index) const
+            {
+                return const_cast<table *>(this)->operator[](index);
+            }
+
+            void wait(size_type index) const
             {
                 offset_db_.wait(index);
             }
 
-            std::pair<std::size_t, std::size_t> size() const
+            bool empty() const
+            {
+                return this->offset_db_.empty();
+            }
+
+            std::pair<size_type, size_type> size() const
             {
                 return {offset_db_.size(), mmap_.size()};
             }
 
-            std::pair<std::size_t, std::size_t> capacity() const
+            std::pair<size_type, size_type> max_size() const
+            {
+                return {offset_db_.max_size(), mmap_.max_size()};
+            }
+
+            std::pair<size_type, size_type> reserve() const
+            {
+                return {offset_db_.reserve(), mmap_.reserve()};
+            }
+
+            std::pair<size_type, size_type> capacity() const
             {
                 return {offset_db_.capacity(), mmap_.capacity()};
             }
 
             void shrink_to_fit()
             {
+                offset_db_.shrink_to_fit();
                 mmap_.shrink_to_fit();
+            }
+
+            fixed::table<std::pair<size_type, size_type>> &index_table()
+            {
+                return offset_db_;
+            }
+
+            const fixed::table<std::pair<size_type, size_type>> &index_table() const
+            {
+                return offset_db_;
             }
         };
     } // namespace variable

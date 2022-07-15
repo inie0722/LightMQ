@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <climits>
+#include <limits>
 
 #include <boost/atomic/ipc_atomic.hpp>
 #include <boost/interprocess/offset_ptr.hpp>
@@ -52,11 +53,14 @@ namespace LightMDB
         class mmap
         {
         public:
+            using size_type = std::size_t;
+            using difference_type = std::ptrdiff_t;
+
             struct header
             {
                 std::endian endian;
-                detail::atomic<std::size_t> size;
-                detail::atomic<std::size_t> capacity;
+                detail::atomic<size_type> size;
+                detail::atomic<size_type> capacity;
                 detail::atomic<bool> lock;
             };
 
@@ -66,7 +70,7 @@ namespace LightMDB
             std::unique_ptr<boost::interprocess::file_mapping> file_mapp_;
             std::unique_ptr<boost::interprocess::mapped_region> region_;
 
-            void create_file(std::size_t size)
+            void create_file(size_type size)
             {
                 std::filebuf fbuf;
                 fbuf.open(mmap_name_, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
@@ -74,7 +78,7 @@ namespace LightMDB
                 fbuf.sputc(0);
             }
 
-            void create_only(std::size_t capacity)
+            void create_only(size_type capacity)
             {
                 using namespace boost::interprocess;
 
@@ -117,7 +121,7 @@ namespace LightMDB
             }
 
         public:
-            mmap(std::string_view name, mode_t mode, std::size_t capacity)
+            mmap(std::string_view name, mode_t mode, size_type capacity)
                 : mmap_name_(name)
             {
                 switch (mode)
@@ -163,17 +167,22 @@ namespace LightMDB
                 }
             }
 
-            std::size_t size() const
+            size_type size() const
             {
                 return header_->size;
             }
 
-            std::size_t reserve() const
+            size_type max_size() const
+            {
+                return std::numeric_limits<size_type>::max();
+            }
+
+            size_type reserve() const
             {
                 return this->capacity() - this->size();
             }
 
-            std::size_t capacity() const
+            size_type capacity() const
             {
                 return region_->get_size() - sizeof(header);
             }
