@@ -1,2 +1,2 @@
 # LightMDB
-Low latency and lightweight message queues
+Low latency and lightweight message database

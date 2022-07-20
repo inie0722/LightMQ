@@ -326,6 +326,11 @@ namespace LightMDB
             {
                 mmap_.shrink_to_fit();
             }
+
+            const std::string &name() const
+            {
+                return mmap_.name();
+            }
         };
     } // namespace fixed
 } // namespace LightMDB

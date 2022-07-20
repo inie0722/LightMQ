@@ -166,6 +166,11 @@ namespace LightMDB
             {
                 return offset_db_;
             }
+
+            std::pair<const std::string &, const std::string &> name() const
+            {
+                return {offset_db_.name(), mmap_.name()};
+            }
         };
     } // namespace variable
 } // namespace LightMDB

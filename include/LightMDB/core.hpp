@@ -169,12 +169,17 @@ namespace LightMDB
 
             header &get_header()
             {
-                return *this->header_;
+                return *header_;
             }
 
             void *get_address()
             {
                 return &static_cast<header *>(region_->get_address())[1];
+            }
+
+            const std::string &name() const
+            {
+                return mmap_name_;
             }
         };
     } // namespace detail
