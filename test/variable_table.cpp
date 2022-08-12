@@ -4,7 +4,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
-#include "LightMDB/variable.hpp"
+#include "air/lightmdb/variable.hpp"
 
 constexpr size_t COUNT = 10000;
 
@@ -28,7 +28,7 @@ public:
     void run_one()
     {
         using value_t = value<DATA_SIZE>;
-        LightMDB::variable::table("table.db", LightMDB::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
+        air::lightmdb::variable::table("table.db", air::lightmdb::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
 
         std::vector<std::atomic<size_t>> array(COUNT);
 
@@ -42,7 +42,7 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                LightMDB::variable::table table("table.db", LightMDB::mode_t::read_write);
+                air::lightmdb::variable::table table("table.db", air::lightmdb::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                LightMDB::variable::table table("table.db", LightMDB::mode_t::read_write);
+                air::lightmdb::variable::table table("table.db", air::lightmdb::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -116,14 +116,14 @@ public:
 
 TEST(variable_table, variable_table)
 {
-    LightMDB::variable::table table("table.db", LightMDB::mode_t::create_only, 8, 8);
+    air::lightmdb::variable::table table("table.db", air::lightmdb::mode_t::create_only, 8, 8);
 
     int a = rand();
     table.push(&a, sizeof(a));
 
     ASSERT_TRUE(table.size().first == 1);
 
-    int b = *(int*)table[0].first;
+    int b = *(int *)table[0].first;
     ASSERT_TRUE(b == a);
 
     int array_a[5] = {rand(), rand(), rand(), rand(), rand()};
@@ -139,7 +139,7 @@ TEST(variable_table, variable_table)
 
     for (size_t i = 0; i < 6; i++)
     {
-        array_b[i] =  *(int*)table[i + 1].first;
+        array_b[i] = *(int *)table[i + 1].first;
     }
 
     ASSERT_TRUE(0 == memcmp(array_a, array_b, sizeof(array_a)));
