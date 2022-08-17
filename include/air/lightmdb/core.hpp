@@ -49,6 +49,7 @@ namespace air
             private:
                 header *header_;
                 std::string mmap_name_;
+                boost::interprocess::mode_t mapped_region_mode_;
                 std::unique_ptr<boost::interprocess::file_mapping> file_mapp_;
                 std::unique_ptr<boost::interprocess::mapped_region> region_;
 
@@ -66,8 +67,9 @@ namespace air
 
                     this->create_file(sizeof(header) + capacity);
 
+                    mapped_region_mode_ = boost::interprocess::mode_t::read_write;
                     file_mapp_ = std::make_unique<file_mapping>(mmap_name_.c_str(), boost::interprocess::mode_t::read_write);
-                    region_ = std::make_unique<mapped_region>(*file_mapp_, boost::interprocess::mode_t::read_write);
+                    region_ = std::make_unique<mapped_region>(*file_mapp_, mapped_region_mode_);
 
                     header_ = new (region_->get_address()) header;
                     header_->size = 0;
@@ -79,8 +81,9 @@ namespace air
                 {
                     using namespace boost::interprocess;
 
+                    mapped_region_mode_ = mapped_region_mode;
                     file_mapp_ = std::make_unique<file_mapping>(mmap_name_.c_str(), file_mapping_mode);
-                    region_ = std::make_unique<mapped_region>(*file_mapp_, mapped_region_mode);
+                    region_ = std::make_unique<mapped_region>(*file_mapp_, mapped_region_mode_);
                     header_ = static_cast<header *>(region_->get_address());
                 }
 
@@ -159,7 +162,7 @@ namespace air
                     using namespace boost::interprocess;
 
                     region_->~mapped_region();
-                    new (region_.get()) mapped_region(*file_mapp_, read_write);
+                    new (region_.get()) mapped_region(*file_mapp_, mapped_region_mode_);
                     header_ = static_cast<header *>(region_->get_address());
                 }
 
