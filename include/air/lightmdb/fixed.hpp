@@ -257,8 +257,8 @@ namespace air
 
                 std::size_t push(const value_type &val)
                 {
-                    auto index = mmap_.get_header().size.fetch_add(1);
-                    return this->do_push(val, index);
+                    auto index = mmap_.get_header().size.fetch_add(sizeof(node));
+                    return this->do_push(val, index / sizeof(node));
                 }
 
                 value_type &operator[](std::size_t index)
@@ -306,7 +306,7 @@ namespace air
 
                 std::size_t size() const
                 {
-                    return mmap_.size();
+                    return mmap_.size() / sizeof(node);
                 }
 
                 std::size_t max_size() const
