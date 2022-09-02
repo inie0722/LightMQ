@@ -168,8 +168,16 @@ namespace air
 
                 void shrink_to_fit()
                 {
-                    std::filesystem::resize_file(mmap_name_, sizeof(header) + header_->size);
-                    header_->capacity = header_->size.load();
+                    using namespace boost::interprocess;
+                    auto size = header_->size.load();
+
+                    //不卸载映射直接resize_file 在Windows上会出现问题
+                    region_->~mapped_region();
+                    std::filesystem::resize_file(mmap_name_, sizeof(header) + size);
+                    new (region_.get()) mapped_region(*file_mapp_, mapped_region_mode_);
+
+                    header_ = static_cast<header *>(region_->get_address());
+                    header_->capacity = size;
                 }
 
                 header &get_header()
