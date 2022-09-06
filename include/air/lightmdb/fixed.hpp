@@ -273,7 +273,10 @@ namespace air
 
                 bool has_value(std::size_t index) const
                 {
-                    return const_cast<table *>(this)->do_read(index).is_value;
+                    if (index < this->capacity())
+                        return const_cast<table *>(this)->do_read(index).is_value;
+                    else
+                        return false;
                 }
 
                 void wait(std::size_t index) const
