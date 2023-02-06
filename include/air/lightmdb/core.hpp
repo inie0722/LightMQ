@@ -141,11 +141,6 @@ namespace air
                     return std::numeric_limits<size_type>::max();
                 }
 
-                size_type reserve() const
-                {
-                    return this->capacity() - this->size();
-                }
-
                 size_type capacity() const
                 {
                     return region_->get_size() - sizeof(header);

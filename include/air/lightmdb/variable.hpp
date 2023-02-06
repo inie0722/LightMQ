@@ -153,11 +153,6 @@ namespace air
                     return {offset_db_.max_size(), mmap_.max_size()};
                 }
 
-                std::pair<size_type, size_type> reserve() const
-                {
-                    return {offset_db_.reserve(), mmap_.reserve()};
-                }
-
                 std::pair<size_type, size_type> capacity() const
                 {
                     return {offset_db_.capacity(), mmap_.capacity()};

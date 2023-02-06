@@ -169,11 +169,6 @@ namespace air
                     return std::numeric_limits<std::size_t>::max();
                 }
 
-                std::size_t reserve() const
-                {
-                    return this->capacity() - this->size();
-                }
-
                 std::size_t capacity() const
                 {
                     return mmap_.capacity() / sizeof(node);
