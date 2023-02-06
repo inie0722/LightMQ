@@ -28,7 +28,7 @@ public:
     void run_one()
     {
         using value_t = value<DATA_SIZE>;
-        air::lightmdb::fixed::table<value_t>("table.db", air::lightmdb::mode_t::create_only, BUFFER_SIZE);
+        air::lightmdb::fixed::table<value_t, true>("table.db", air::lightmdb::mode_t::create_only, BUFFER_SIZE);
 
         std::vector<std::atomic<size_t>> array(COUNT);
 
@@ -42,7 +42,7 @@ public:
         {
             write_thread[i] = std::thread([&]()
                                           {
-                air::lightmdb::fixed::table<value_t> table("table.db", air::lightmdb::mode_t::read_write);
+                air::lightmdb::fixed::table<value_t, true> table("table.db", air::lightmdb::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -59,7 +59,7 @@ public:
         {
             read_thread[i] = std::thread([&]()
                                          {
-                air::lightmdb::fixed::table<value_t> table("table.db", air::lightmdb::mode_t::read_write);
+                air::lightmdb::fixed::table<value_t, true> table("table.db", air::lightmdb::mode_t::read_write);
                 value_t data;
 
                 auto start = std::chrono::steady_clock::now();
@@ -116,7 +116,7 @@ public:
 
 TEST(fixed_table, fixed_table)
 {
-    air::lightmdb::fixed::table<int> table("table.db", air::lightmdb::mode_t::create_only, 8);
+    air::lightmdb::fixed::table<int, true> table("table.db", air::lightmdb::mode_t::create_only, 8);
 
     int a = rand();
     table.push(a);

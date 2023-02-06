@@ -13,7 +13,7 @@ namespace air
     {
         namespace fixed
         {
-            template <typename T>
+            template <typename T, bool IsLock = true>
             class table
             {
             public:
@@ -64,20 +64,30 @@ namespace air
                     if (index >= capacity_)
                     {
                         auto &header = mmap_.get_header();
-                        auto flag = header.lock.exchange(true);
 
-                        if (!flag)
+                        if constexpr (IsLock == true)
                         {
-                            if (capacity_ == this->capacity())
+                            auto flag = header.lock.exchange(true);
+
+                            if (!flag)
                             {
-                                mmap_.recapacity();
+                                if (capacity_ == this->capacity())
+                                {
+                                    mmap_.recapacity();
+                                }
+
+                                header.lock = false;
+                                header.capacity.notify_all();
                             }
 
-                            header.lock = false;
+                            header.capacity.wait(capacity_ * sizeof(node));
+                        }
+                        else
+                        {
+                            mmap_.recapacity();
                             header.capacity.notify_all();
                         }
 
-                        header.capacity.wait(capacity_ * sizeof(node));
                         this->remmap();
                     }
 

@@ -14,6 +14,7 @@ namespace air
     {
         namespace variable
         {
+            template <bool IsLock = true>
             class table
             {
             public:
@@ -21,7 +22,7 @@ namespace air
                 using difference_type = std::ptrdiff_t;
 
             private:
-                fixed::table<std::pair<size_type, size_type>> offset_db_;
+                fixed::table<std::pair<size_type, size_type>, IsLock> offset_db_;
                 detail::mmap mmap_;
                 char *data_;
 
@@ -41,20 +42,29 @@ namespace air
                     while (index + size >= capacity_)
                     {
                         auto &header = mmap_.get_header();
-                        auto flag = header.lock.exchange(true);
 
-                        if (!flag)
+                        if constexpr (IsLock == true)
                         {
-                            if (capacity_ == this->capacity().second)
+                            auto flag = header.lock.exchange(true);
+
+                            if (!flag)
                             {
-                                mmap_.recapacity();
+                                if (capacity_ == this->capacity().second)
+                                {
+                                    mmap_.recapacity();
+                                }
+
+                                header.lock = false;
+                                header.capacity.notify_all();
                             }
 
-                            header.lock = false;
-                            header.capacity.notify_all();
+                            header.capacity.wait(capacity_);
                         }
-
-                        header.capacity.wait(capacity_);
+                        else
+                        {
+                            mmap_.recapacity();
+                            header.capacity.wait(capacity_);
+                        }
                         this->remmap();
                     }
 
@@ -159,12 +169,12 @@ namespace air
                     mmap_.shrink_to_fit();
                 }
 
-                fixed::table<std::pair<size_type, size_type>> &index_table()
+                fixed::table<std::pair<size_type, size_type>, IsLock> &index_table()
                 {
                     return offset_db_;
                 }
 
-                const fixed::table<std::pair<size_type, size_type>> &index_table() const
+                const fixed::table<std::pair<size_type, size_type>, IsLock> &index_table() const
                 {
                     return offset_db_;
                 }
