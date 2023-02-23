@@ -56,7 +56,8 @@ namespace air
                 void create_file(size_type size)
                 {
                     std::filebuf fbuf;
-                    fbuf.open(mmap_name_, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
+                    if (nullptr == fbuf.open(mmap_name_, std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary))
+                        throw std::runtime_error("failed to create file " + mmap_name_);
                     fbuf.pubseekoff(size - 1, std::ios::beg);
                     fbuf.sputc(0);
                 }
