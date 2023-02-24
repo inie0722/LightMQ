@@ -78,7 +78,7 @@ namespace air
                     header_->capacity = capacity;
                 }
 
-                void open_only(boost::interprocess::mode_t file_mapping_mode, boost::interprocess::mode_t mapped_region_mode)
+                void open_only(boost::interprocess::mode_t file_mapping_mode, boost::interprocess::mode_t mapped_region_mode, std::size_t capacity)
                 {
                     using namespace boost::interprocess;
 
@@ -86,6 +86,13 @@ namespace air
                     file_mapp_ = std::make_unique<file_mapping>(mmap_name_.c_str(), file_mapping_mode);
                     region_ = std::make_unique<mapped_region>(*file_mapp_, mapped_region_mode_);
                     header_ = static_cast<header *>(region_->get_address());
+
+                    if (header_->capacity < capacity)
+                    {
+                        std::filesystem::resize_file(mmap_name_, capacity + sizeof(header));
+                        header_->capacity = capacity;
+                        remmap();
+                    }
                 }
 
             public:
@@ -99,7 +106,7 @@ namespace air
                         break;
                     case mode_t::open_or_create:
                         if (std::filesystem::exists(name))
-                            open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write);
+                            open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write, capacity);
                         else
                             create_only(capacity);
                         break;
@@ -114,16 +121,16 @@ namespace air
                     switch (mode)
                     {
                     case mode_t::read_write:
-                        open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write);
+                        open_only(boost::interprocess::mode_t::read_write, boost::interprocess::mode_t::read_write, 0);
                         break;
                     case mode_t::read_only:
-                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_only);
+                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_only, 0);
                         break;
                     case mode_t::read_private:
-                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_private);
+                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::read_private, 0);
                         break;
                     case mode_t::copy_on_write:
-                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::copy_on_write);
+                        open_only(boost::interprocess::mode_t::read_only, boost::interprocess::mode_t::copy_on_write, 0);
                         break;
                     default:
                         throw std::runtime_error("error mode");
