@@ -34,6 +34,7 @@ jobs:
     - name: Install library
       working-directory: ${{github.workspace}}/vcpkg
       run: |
+          ./vcpkg install benchmark
           ./vcpkg install gtest
           ./vcpkg install boost-atomic
           ./vcpkg install boost-interprocess

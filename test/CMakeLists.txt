@@ -1,8 +1,16 @@
 add_executable(fixed_table EXCLUDE_FROM_ALL fixed_table.cpp)
 add_executable(variable_table EXCLUDE_FROM_ALL variable_table.cpp)
+add_executable(fixed_table_benchmark EXCLUDE_FROM_ALL fixed_table_benchmark.cpp)
+add_executable(variable_table_benchmark EXCLUDE_FROM_ALL variable_table_benchmark.cpp)
+
+add_custom_target(check DEPENDS fixed_table variable_table fixed_table_benchmark variable_table_benchmark)
 
 target_link_libraries(fixed_table GTest::gtest)
 target_link_libraries(variable_table GTest::gtest)
+target_link_libraries(fixed_table_benchmark benchmark::benchmark)
+target_link_libraries(variable_table_benchmark benchmark::benchmark)
 
 add_test(NAME fixed_table COMMAND fixed_table)
 add_test(NAME variable_table COMMAND variable_table)
+add_test(NAME fixed_table_benchmark COMMAND fixed_table_benchmark)
+add_test(NAME variable_table_benchmark COMMAND variable_table_benchmark)

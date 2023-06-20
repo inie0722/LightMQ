@@ -5,11 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-if(Test)
+#if(Test)
     enable_testing()
     find_package(GTest CONFIG REQUIRED)
+    find_package(benchmark REQUIRED)
+
     add_subdirectory(${CMAKE_SOURCE_DIR}/test)
-endif()
+#endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 
