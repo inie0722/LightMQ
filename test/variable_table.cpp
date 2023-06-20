@@ -1,154 +1,52 @@
-#include <iostream>
-#include <thread>
 #include <cstddef>
-#include <vector>
+#include <cstdint>
+#include <filesystem>
 
 #include <gtest/gtest.h>
 #include "air/lightmdb/variable.hpp"
 
-constexpr size_t COUNT = 10000;
+using namespace air::lightmdb;
+constexpr auto FILE_NAME = "table.db";
 
-constexpr size_t BUFFER_SIZE = 256;
-
-constexpr size_t THREAD_WRITE_NUM = 2;
-
-constexpr size_t THREAD_READ_NUM = 2;
-
-class verify
+TEST(fixed_table, fixed_table)
 {
-public:
-    template <size_t DATA_SIZE>
-    struct value
+    auto table = std::make_unique<variable::table<>>(FILE_NAME, air::lightmdb::mode_t::create_only, 16, 8);
+
+    ASSERT_EQ(table->size().first, 0);
+    ASSERT_EQ(table->size().second, 0);
+    ASSERT_EQ(table->capacity().first, 8);
+    ASSERT_EQ(table->capacity().second, 16);
+    ASSERT_TRUE(table->empty());
+
+    for (int64_t i = 0; i < 10; i++)
     {
-        size_t val;
-        char _[DATA_SIZE - sizeof(val)];
-    };
-
-    template <size_t DATA_SIZE>
-    void run_one()
-    {
-        using value_t = value<DATA_SIZE>;
-        air::lightmdb::variable::table<true>("table.db", air::lightmdb::mode_t::create_only, BUFFER_SIZE, BUFFER_SIZE);
-
-        std::vector<std::atomic<size_t>> array(COUNT);
-
-        std::atomic<size_t> write_diff = 0;
-        std::atomic<size_t> read_diff = 0;
-
-        std::thread write_thread[THREAD_WRITE_NUM];
-        std::thread read_thread[THREAD_READ_NUM];
-
-        for (size_t i = 0; i < THREAD_WRITE_NUM; i++)
-        {
-            write_thread[i] = std::thread([&]()
-                                          {
-                air::lightmdb::variable::table<true> table("table.db", air::lightmdb::mode_t::read_write);
-                value_t data;
-
-                auto start = std::chrono::steady_clock::now();
-                for (size_t i = 0; i < COUNT; i++)
-                {
-                    data.val = i;
-                    table.push(&data, sizeof(data));    
-                }
-                auto end = std::chrono::steady_clock::now();
-                write_diff += (end - start).count(); });
-        }
-
-        for (size_t i = 0; i < THREAD_READ_NUM; i++)
-        {
-            read_thread[i] = std::thread([&]()
-                                         {
-                air::lightmdb::variable::table<true> table("table.db", air::lightmdb::mode_t::read_write);
-                value_t data;
-
-                auto start = std::chrono::steady_clock::now();
-                for (size_t i = 0; i < COUNT * THREAD_WRITE_NUM; i++)
-                {
-                    table.wait(i);
-                    data = *(value_t*)table[i].first;
-                    size_t index = data.val;
-                    array[index]++;
-                }
-                auto end = std::chrono::steady_clock::now();
-                read_diff += (end - start).count(); });
-        }
-
-        for (size_t i = 0; i < THREAD_WRITE_NUM; i++)
-        {
-            write_thread[i].join();
-        }
-
-        for (size_t i = 0; i < THREAD_READ_NUM; i++)
-        {
-            read_thread[i].join();
-        }
-
-        size_t max = 0;
-        size_t min = 0;
-        for (size_t i = 0; i < COUNT; i++)
-        {
-            if (array[i] != THREAD_WRITE_NUM * THREAD_READ_NUM)
-            {
-                if (array[i] > THREAD_WRITE_NUM * THREAD_READ_NUM)
-                    max++;
-                else
-                    min++;
-            }
-        }
-
-        std::cout << "size/" << DATA_SIZE << " byte\t"
-                  << "w/" << (write_diff / THREAD_WRITE_NUM / COUNT)
-                  << " ns\t"
-                  << "r/" << read_diff / THREAD_READ_NUM / COUNT
-                  << " ns\t" << std::endl;
-
-        ASSERT_TRUE(max == 0);
-        ASSERT_TRUE(min == 0);
+        table->push(&i, sizeof(i));
+        ASSERT_EQ((*table)[i].second, sizeof(i));
+        ASSERT_EQ(*(int64_t *)(*table)[i].first, i);
     }
 
-    template <size_t... DATA_SIZE_>
-    void run()
+    ASSERT_EQ(table->size().first, 10);
+    ASSERT_EQ(table->size().second, 10 * sizeof(int64_t));
+    ASSERT_EQ(table->capacity().first, 16);
+    ASSERT_EQ(table->capacity().second, 128);
+
+    ASSERT_TRUE(table->has_value(0));
+    ASSERT_FALSE(table->has_value(10));
+
+    table->shrink_to_fit();
+    table = std::make_unique<variable::table<>>(FILE_NAME, air::lightmdb::mode_t::read_only);
+    ASSERT_EQ(table->size().first, 10);
+    ASSERT_EQ(table->size().second, 10 * sizeof(int64_t));
+    ASSERT_EQ(table->capacity().first, 10);
+    ASSERT_EQ(table->capacity().second, 10 * sizeof(int64_t));
+    for (int64_t i = 0; i < 10; i++)
     {
-        (run_one<DATA_SIZE_>(), ...);
-    }
-};
-
-TEST(variable_table, variable_table)
-{
-    air::lightmdb::variable::table<true> table("table.db", air::lightmdb::mode_t::create_only, 8, 8);
-
-    int a = rand();
-    table.push(&a, sizeof(a));
-
-    ASSERT_TRUE(table.size().first == 1);
-
-    int b = *(int *)table[0].first;
-    ASSERT_TRUE(b == a);
-
-    int array_a[5] = {rand(), rand(), rand(), rand(), rand()};
-
-    for (size_t i = 0; i < 5; i++)
-    {
-        table.push(&array_a[i], sizeof(int));
+        ASSERT_EQ((*table)[i].second, sizeof(i));
+        ASSERT_EQ(*(int64_t *)(*table)[i].first, i);
     }
 
-    ASSERT_TRUE(table.size().first == 6);
-
-    int array_b[5] = {0};
-
-    for (size_t i = 0; i < 6; i++)
-    {
-        array_b[i] = *(int *)table[i + 1].first;
-    }
-
-    ASSERT_TRUE(0 == memcmp(array_a, array_b, sizeof(array_a)));
-}
-
-TEST(variable_table, performance)
-{
-    verify v;
-    v.run<64, 128, 256, 512, 1024>();
+    std::filesystem::remove(FILE_NAME);
+    std::filesystem::remove(std::string(FILE_NAME) + "i");
 }
 
 int main(int argc, char **argv)

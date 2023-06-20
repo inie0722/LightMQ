@@ -39,7 +39,7 @@ namespace air
                 /// 推入数据
                 size_type do_push(const void *val, size_type size, size_type index)
                 {
-                    while (index + size >= capacity_)
+                    while (index + size > capacity_)
                     {
                         auto &header = mmap_.get_header();
 
@@ -74,7 +74,7 @@ namespace air
 
                 void *do_read(size_type index, size_type size)
                 {
-                    while (index + size >= capacity_)
+                    while (index + size > capacity_)
                     {
                         auto &header = mmap_.get_header();
                         header.capacity.wait(capacity_);
